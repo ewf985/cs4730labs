@@ -1,4 +1,5 @@
 #include "math.h"
+#include <tf/tf.h>
 #include "ros/ros.h"
 #include "geometry_msgs/Twist.h"
 #include "nav_msgs/Odometry.h"
@@ -6,36 +7,34 @@
 
 double currentPosX;
 double currentPosY;
-double currentPosW;
-double currentPosZ;
+double currentPosYaw;
 
 //Odom Callback function
 void callback(const nav_msgs::Odometry::ConstPtr& msg){
 	currentPosX=msg->pose.pose.position.x;	//Position X
 	currentPosY=msg->pose.pose.position.y;	//Position Y
-	currentPosW=msg->pose.pose.orientation.w;	//Orientation X comp
-	currentPosZ=msg->pose.pose.orientation.z;	//Orientation Y comp	
 	//ROS_INFO("Pos x,y,z: %f, %f, %f",msg->pose.pose.position.x,msg->pose.pose.position.y,msg->pose.pose.position.z);
-	//ROS_INFO("ori x,y,z,w: %f,%f,%f,%f",msg->pose.pose.orientation.x,msg->pose.pose.orientation.y,msg->pose.pose.orientation.z,msg->pose.pose.orientation.w);
+
+ 	tf::Quaternion q(
+		msg->pose.pose.orientation.x,
+		msg->pose.pose.orientation.y,
+		msg->pose.pose.orientation.z,
+		msg->pose.pose.orientation.w);
+	tf::Matrix3x3 m(q);
+	double roll, pitch, yaw;
+	m.getRPY(roll, pitch, yaw);
+	currentPosYaw = yaw;
 }
 
 //determine the final coordinate point
 void findTargetPos(double* targetPosX,double* targetPosY,const double distance){
 	*targetPosX=currentPosX;
 	*targetPosY=currentPosY;
-	*targetPosX+=distance*currentPosW;
-	*targetPosY+=distance*currentPosZ;
+	*targetPosX+=distance*cos(currentPosYaw);
+	*targetPosY+=distance*sin(currentPosYaw);
 	return;
 }
 
-//determine the angle to turn to
-void findTargetAngle(double* targetAngleW,double* targetAngleZ,const double angle){
-	double target;
-	target=angle+(atan(currentPosZ/currentPosW)*(180/PI));
-	*targetAngleW=cos(target);
-	*targetAngleZ=sin(target);
-	return;
-}
 
 //check to see if the distnace has been traveled to
 bool checkDistance(const double targetX,const double targetY,const double err){
@@ -49,8 +48,9 @@ bool checkDistance(const double targetX,const double targetY,const double err){
 }
 
 //check to see if the angle has been reached
-bool checkAngle(const double targetW,const double targetZ,const double err){
-	double currentAngle=(180/PI)*atan(::currentPosZ/::currentPosW),targetAngle=(180/PI)*atan(targetZ/targetW);
+bool checkAngle(const double target,const double err){
+	double currentAngle=(180/PI)*currentPosYaw;
+	double targetAngle=target;
 	ROS_INFO("Current Angle: %f\nTarget Range: %f-%f",currentAngle,targetAngle-err,targetAngle+err);
 	if(currentAngle>=(targetAngle-err) && currentAngle<=(targetAngle+err)){
 		//ROS_INFO("Return: True");
@@ -76,7 +76,7 @@ int main(int argc,char **argv){
       	}
 
 	int i;
-	double targetX,targetY,targetW,targetZ,distance=1,angle=90,speed=.1,radius=.005;
+	double targetX,targetY,targetYaw,distance=1,angle=72,speed=.1,radius=.005;
 	
 	while(ros::ok()){
 		//set speeds to 0
@@ -87,7 +87,7 @@ int main(int argc,char **argv){
 		r.sleep();
 		//get and go to the next position
 		findTargetPos(&targetX,&targetY,distance);
-		while(!checkDistance(targetX,targetY,distance*.001) && ros::ok()){
+		while(!checkDistance(targetX,targetY,distance*.05) && ros::ok()){
 			//ROS_INFO("Driving");
 			msg.linear.x=speed;
 			pub.publish(msg);
@@ -100,11 +100,14 @@ int main(int argc,char **argv){
 		ros::spinOnce();
 		r.sleep();
 		//get and go to next angle
-		findTargetAngle(&targetW,&targetZ,angle);
-		while(!checkAngle(targetW,targetZ,1) && ros::ok()){
+		targetYaw = (180/PI)*currentPosYaw + angle;
+		if(targetYaw > 180) {
+			targetYaw = targetYaw -360;
+		}
+		while(!checkAngle(targetYaw,1) && ros::ok()){
 			//ROS_INFO("Turning");
 			msg.linear.x=speed/100;
-			msg.angular.z=-(speed/100)/radius;
+			msg.angular.z=(speed/100)/radius;
 			pub.publish(msg);
 			ros::spinOnce();
 			r.sleep();
