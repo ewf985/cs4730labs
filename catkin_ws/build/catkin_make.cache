@@ -1,0 +1,2 @@
+beginner_tutorials:lab2
+-DCATKIN_DEVEL_PREFIX=/nfshome/ewf985/catkin_ws/devel -DCMAKE_INSTALL_PREFIX=/nfshome/ewf985/catkin_ws/install -G Unix Makefiles

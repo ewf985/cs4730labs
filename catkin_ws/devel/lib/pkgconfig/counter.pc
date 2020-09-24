@@ -1,0 +1,8 @@
+prefix=/nfshome/ewf985/catkin_ws/devel
+
+Name: counter
+Description: Description of counter
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 
