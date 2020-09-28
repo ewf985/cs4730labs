@@ -51,7 +51,7 @@ bool checkAngle(const double target,const double err){
 //================================================================
 int main(int argc,char **argv){
 
-	ros::init(argc,argv,"circle_node");
+	ros::init(argc,argv,"polygon_node");
 	ros::NodeHandle pubH,subH;
 	ros::Publisher pub = pubH.advertise<geometry_msgs::Twist>("/cmd_vel",1000);
 	ros::Subscriber sub = subH.subscribe("/odom",1000,callback);
