@@ -3,15 +3,16 @@
 #include <sstream>
 
 int main(int argc,char **argv){
+	//Setup ROS
 	ros::init(argc,argv,"publisher_node");
 	ros::NodeHandle nh;
-
+	//setup publisher to send messages to topic "counter"
 	ros::Publisher bub = nh.advertise<std_msgs::String>("counter",1000);
-
+	//set rate to 1 second
 	ros::Rate r(1);
 
 	//Waits for subscribers before posting messages
-	while (0 == bub.getNumSubscribers()) {
+	while (0 == bub.getNumSubscribers() && ros::ok()) {
           ROS_INFO("Waiting for subscribers to connect");
           r.sleep();
       	}
