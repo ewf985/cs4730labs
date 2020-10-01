@@ -7,6 +7,7 @@
 #include <geometry_msgs/Twist.h>
 #include <turtlesim/Spawn.h>
 
+float turtle2_angle = 0;
 
 void pose1Callback(const turtlesim::PoseConstPtr& msg){
 	static tf2_ros::TransformBroadcaster br;
@@ -20,6 +21,7 @@ void pose1Callback(const turtlesim::PoseConstPtr& msg){
 	transformStamped.transform.translation.z = 0.0;
 	tf2::Quaternion q;
 	q.setRPY(0, 0, msg->theta);
+	ROS_INFO("1: %f",msg->theta);
 	transformStamped.transform.rotation.x = q.x();
 	transformStamped.transform.rotation.y = q.y();
 	transformStamped.transform.rotation.z = q.z();
@@ -40,6 +42,8 @@ void pose2Callback(const turtlesim::PoseConstPtr& msg){
 	transformStamped.transform.translation.z = 0.0;
 	tf2::Quaternion q;
 	q.setRPY(0, 0, msg->theta);
+	turtle2_angle = msg->theta;
+	ROS_INFO("2: %f",msg->theta);
 	transformStamped.transform.rotation.x = q.x();
 	transformStamped.transform.rotation.y = q.y();
 	transformStamped.transform.rotation.z = q.z();
@@ -87,7 +91,7 @@ int main(int argc, char** argv){
 
 		geometry_msgs::Twist vel_msg;
 
-		vel_msg.angular.z = 4.0 * atan2(transformStamped.transform.translation.y,transformStamped.transform.translation.x);
+		vel_msg.angular.z = (4.0 * atan2(transformStamped.transform.translation.y,transformStamped.transform.translation.x)) + turtle2_angle;
 		vel_msg.linear.x = 0.5 * sqrt(pow(transformStamped.transform.translation.x, 2) + pow(transformStamped.transform.translation.y, 2));
 		turtle_vel.publish(vel_msg);
 
