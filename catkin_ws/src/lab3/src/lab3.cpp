@@ -2,28 +2,27 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <geometry_msgs/TransformStamped.h>
-#include <turtlesim/Pose.h>
+#include "nav_msgs/Odometry.h"
 #include <tf2_ros/transform_listener.h>
+#include <tf/tf.h>
 #include <geometry_msgs/Twist.h>
-#include <turtlesim/Spawn.h>
+#include <stdlib.h>
 
 float turtle2_angle,turtle1_angle = 0;
 
-void pose1Callback(){				//const turtlesim::PoseConstPtr& msg
+void pose1Callback(float x, float y, float theta){				
 	static tf2_ros::TransformBroadcaster br;
 	geometry_msgs::TransformStamped transformStamped;
 
 	transformStamped.header.stamp = ros::Time::now();
 	transformStamped.header.frame_id = "world";
 	transformStamped.child_frame_id = "target";
-	transformStamped.transform.translation.x = 8;
-	transformStamped.transform.translation.y = 2;
-	//ROS_INFO("1x,y: %f,%f",msg->x,msg->y);
+	transformStamped.transform.translation.x = x;
+	transformStamped.transform.translation.y = y;
 	transformStamped.transform.translation.z = 0.0;
 	tf2::Quaternion q;
-	q.setRPY(0, 0, 1.7);
-	turtle1_angle = 1.7;
-	//ROS_INFO("1: %f",msg->theta);
+	q.setRPY(0, 0, theta);
+	turtle1_angle = theta;
 	transformStamped.transform.rotation.x = q.x();
 	transformStamped.transform.rotation.y = q.y();
 	transformStamped.transform.rotation.z = q.z();
@@ -32,50 +31,47 @@ void pose1Callback(){				//const turtlesim::PoseConstPtr& msg
 	br.sendTransform(transformStamped);
 }
 
-void pose2Callback(const turtlesim::PoseConstPtr& msg){
+void pose2Callback(const nav_msgs::Odometry::ConstPtr& msg){
 	static tf2_ros::TransformBroadcaster br;
 	geometry_msgs::TransformStamped transformStamped;
 
 	transformStamped.header.stamp = ros::Time::now();
 	transformStamped.header.frame_id = "world";
 	transformStamped.child_frame_id = "turtle1";
-	transformStamped.transform.translation.x = msg->x;
-	transformStamped.transform.translation.y = msg->y;
-	//ROS_INFO("2x,y: %f,%f",msg->x,msg->y);
+	transformStamped.transform.translation.x = msg->pose.pose.position.x;
+	transformStamped.transform.translation.y = msg->pose.pose.position.y;
 	transformStamped.transform.translation.z = 0.0;
-	tf2::Quaternion q;
-	q.setRPY(0, 0, msg->theta);
-	turtle2_angle = msg->theta;
-	//ROS_INFO("2: %f",msg->theta);
-	transformStamped.transform.rotation.x = q.x();
-	transformStamped.transform.rotation.y = q.y();
-	transformStamped.transform.rotation.z = q.z();
-	transformStamped.transform.rotation.w = q.w();
+	
+	//Convert to quaternion
+ 	tf::Quaternion q(
+		msg->pose.pose.orientation.x,
+		msg->pose.pose.orientation.y,
+		msg->pose.pose.orientation.z,
+		msg->pose.pose.orientation.w);
+	tf::Matrix3x3 m(q);
+	double roll, pitch, yaw;
+	m.getRPY(roll, pitch, yaw);
+	turtle2_angle = yaw;
+
+	ROS_INFO("x,y,t: %f,%f,%f",msg->pose.pose.position.x,msg->pose.pose.position.y,yaw);
+
+	transformStamped.transform.rotation.x = msg->pose.pose.orientation.x;
+	transformStamped.transform.rotation.y = msg->pose.pose.orientation.y;
+	transformStamped.transform.rotation.z = msg->pose.pose.orientation.z;
+	transformStamped.transform.rotation.w = msg->pose.pose.orientation.w;
 
 	br.sendTransform(transformStamped);
 }
 
 int main(int argc, char** argv){
+	float x = atof(argv[1]),y = atof(argv[2]),theta = (atof(argv[3])*3.1415)/180;
+	
 	ros::init(argc, argv, "my_tf2_broadcaster");
 	ros::NodeHandle node;
 
-	//Spawn in a new turtle
-/*
-	ros::service::waitForService("spawn");
-	ros::ServiceClient spawner =
-	node.serviceClient<turtlesim::Spawn>("spawn");
-	turtlesim::Spawn turtle;
-	turtle.request.x = 4;
-	turtle.request.y = 2;
-	turtle.request.theta = 0;
-	turtle.request.name = "turtle2";
-	spawner.call(turtle);
-*/
+	ros::Subscriber sub2 = node.subscribe("/odom", 10, &pose2Callback);   // turtle1/pose
 
-	//ros::Subscriber sub1 = node.subscribe("turtle1/pose", 10, &pose1Callback);
-	ros::Subscriber sub2 = node.subscribe("turtle1/pose", 10, &pose2Callback);
-
-	ros::Publisher turtle_vel = node.advertise<geometry_msgs::Twist>("/turtle1/cmd_vel", 10);
+	ros::Publisher turtle_vel = node.advertise<geometry_msgs::Twist>("/cmd_vel", 10);  //  /turtle1/cmd_vel
 
 	tf2_ros::Buffer tfBuffer;
 	tf2_ros::TransformListener tfListener(tfBuffer);
@@ -83,7 +79,7 @@ int main(int argc, char** argv){
 	ros::Rate rate(10.0);
 	while (node.ok()){
 		ros::spinOnce();
-		pose1Callback();
+		pose1Callback(x,y,theta);
 		geometry_msgs::TransformStamped transformStamped;
 		try{
 			transformStamped = tfBuffer.lookupTransform("turtle1", "target",ros::Time(0));
