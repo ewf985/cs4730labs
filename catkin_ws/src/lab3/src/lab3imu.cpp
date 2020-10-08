@@ -7,8 +7,9 @@
 #include <tf/tf.h>
 #include <geometry_msgs/Twist.h>
 #include <stdlib.h>
+#include <std_msgs/String.h>
 
-float turtle2_angle,turtle1_angle = 0;
+float turtle2_angle,turtle2_x,turtle2_y,turtle1_angle = 0;
 
 void pose1Callback(float x, float y, float theta){				
 	static tf2_ros::TransformBroadcaster br;
@@ -32,33 +33,39 @@ void pose1Callback(float x, float y, float theta){
 }
 
 void pose2Callback(const nav_msgs::Odometry::ConstPtr& msg){
+	//Reads x and y from odometry
+	turtle2_x=msg->pose.pose.position.x;
+	turtle2_y=msg->pose.pose.position.y;
+}
+
+void pose3Callback(const std_msgs::String::ConstPtr& msg){
+	//Reads yaw from imu
+	turtle2_angle=atof(msg->data.c_str());
+	turtle2_angle=-turtle2_angle;
+}
+
+void setTransform(void){
+	//Creates a transfrom from the x, y, and yaw collected in the subscriber callback functions
 	static tf2_ros::TransformBroadcaster br;
 	geometry_msgs::TransformStamped transformStamped;
-
 	transformStamped.header.stamp = ros::Time::now();
 	transformStamped.header.frame_id = "world";
 	transformStamped.child_frame_id = "turtle1";
-	transformStamped.transform.translation.x = msg->pose.pose.position.x;
-	transformStamped.transform.translation.y = msg->pose.pose.position.y;
+	
+	//Set transform x,y,z
+	transformStamped.transform.translation.x = turtle2_x;
+	transformStamped.transform.translation.y = turtle2_y;
 	transformStamped.transform.translation.z = 0.0;
 	
-	//Convert to quaternion
- 	tf::Quaternion q(
-		msg->pose.pose.orientation.x,
-		msg->pose.pose.orientation.y,
-		msg->pose.pose.orientation.z,
-		msg->pose.pose.orientation.w);
-	tf::Matrix3x3 m(q);
-	double roll, pitch, yaw;
-	m.getRPY(roll, pitch, yaw);
-	turtle2_angle = yaw;
+	//Convert yaw to quaternion
+ 	tf::Quaternion q(0,0,0,0);
+	q.setRPY(0,0,turtle2_angle);	
 
-	ROS_INFO("x,y,t: %f,%f,%f",msg->pose.pose.position.x,msg->pose.pose.position.y,(yaw/3.141592654)*180.0);
-
-	transformStamped.transform.rotation.x = msg->pose.pose.orientation.x;
-	transformStamped.transform.rotation.y = msg->pose.pose.orientation.y;
-	transformStamped.transform.rotation.z = msg->pose.pose.orientation.z;
-	transformStamped.transform.rotation.w = msg->pose.pose.orientation.w;
+	//Set transform quaternion
+	transformStamped.transform.rotation.x = q.x();
+	transformStamped.transform.rotation.y = q.y();
+	transformStamped.transform.rotation.z = q.z();
+	transformStamped.transform.rotation.w = q.w();
 
 	br.sendTransform(transformStamped);
 }
@@ -69,7 +76,8 @@ int main(int argc, char** argv){
 	ros::init(argc, argv, "my_tf2_broadcaster");
 	ros::NodeHandle node;
 
-	ros::Subscriber sub2 = node.subscribe("/odom", 10, &pose2Callback);   // turtle1/pose
+	ros::Subscriber sub2 = node.subscribe("/odom", 10, &pose2Callback);
+	ros::Subscriber sub3 = node.subscribe("/imu", 10, &pose3Callback);
 
 	ros::Publisher turtle_vel = node.advertise<geometry_msgs::Twist>("/cmd_vel", 10);  //  /turtle1/cmd_vel
 
@@ -82,6 +90,7 @@ int main(int argc, char** argv){
 	ros::Rate rate(10.0);
 	while (node.ok()){
 		ros::spinOnce();
+		setTransform();
 		pose1Callback(x,y,theta);
 		try{
 			transformStamped = tfBuffer.lookupTransform("turtle1", "target",ros::Time(0));
@@ -106,6 +115,7 @@ int main(int argc, char** argv){
 	}
 	while(node.ok()){
 		ros::spinOnce();
+		setTransform();
 		pose1Callback(x,y,theta);
 		try{
 			transformStamped = tfBuffer.lookupTransform("turtle1", "target",ros::Time(0));
