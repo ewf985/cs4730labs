@@ -1,0 +1,19 @@
+#include "ros/ros.h"
+#include "ca_msgs/Bumper"
+
+//Callback function for when messages are recieved 
+void callback(const ca_msgs::Bumper::ConstPtr& msg){
+	//Print to screen
+	ROS_INFO("leftBumper:\t%d\nrightBumper:\t%d",msg->is_left_pressed,msg->is_right_pressed);
+}	
+
+int main(int argc,char **argv){
+	//Setup ROS
+	ros::init(argc,argv,"subscriber_node");
+	ros::NodeHandle nh;
+	//Subscribe to topic "bumper"
+	ros::Subscriber sbub = nh.subscribe("bumper",1000,callback);
+	//run ros forever
+	ros::spin();
+	return 0;
+}

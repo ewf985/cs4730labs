@@ -1,0 +1,32 @@
+<!--
+  Example standalone launcher for the velocity multiplexer.
+  
+  For best results you would usually load this into the core control system
+  to avoid latency for reactive controllers. However for other apps, running
+  it standalone with a similar configuration will also work.
+ -->
+<launch>
+  <arg name="nodelet_manager_name"  value="nodelet_manager"/>
+  <arg name="config_file"           value="$(find lab4)/param/nodes_priority.yaml"/>
+<
+  <include file="$(find ca_driver)/launch/create_2.launch" />
+  
+  <!-- nodelet manager -->
+  <node pkg="nodelet" type="nodelet" name="$(arg nodelet_manager_name)" args="manager"/>
+  
+  <!-- velocity mulitplexer -->
+  <include file="$(find yocs_cmd_vel_mux)/launch/cmd_vel_mux.launch">
+    <arg name="nodelet_manager_name"  value="$(arg nodelet_manager_name)"/>
+    <arg name="config_file"           value="$(arg config_file)"/>
+  </include>
+<!--  
+  <node pkg="ca_driver" type="wheel2twist_node" name="wheel2twist_node">
+	<remap from="/cmd_vel" to="/feedback/cmd_vel" />
+  </node>
+-->
+  <node pkg="turtlebot_teleop" name="turtlebot_teleop_key" type="turtlebot_teleop_key" output="screen">
+     <remap from="/turtlebot_teleop_key/cmd_vel" to="/keyop/cmd_vel"/>
+  </node>
+  <node name="obstacle_avoidance_node" pkg="lab4" type="obstacle_avoidance_node" />
+
+</launch>

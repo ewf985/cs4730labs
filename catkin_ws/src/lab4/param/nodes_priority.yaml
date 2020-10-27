@@ -1,0 +1,16 @@
+subscribers:
+  - name:        "Obstacle avoidance input"
+    topic:       "/obstacle_avoidance/cmd_vel"
+    timeout:     0.1
+    priority:    10
+    short_desc:  "The obstacle avoidance node signal"
+  - name:        "Keyboard operation"
+    topic:       "/keyop/cmd_vel"
+    timeout:     0.1
+    priority:    9
+    short_desc:  "Cmd_vel from the keyboard"
+  - name:        "feedback node input"
+    topic:       "/feedback/cmd_vel"
+    timeout:     0.3
+    priority:    8
+publisher:       "/cmd_vel"
