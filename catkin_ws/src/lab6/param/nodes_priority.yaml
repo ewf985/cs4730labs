@@ -1,0 +1,17 @@
+subscribers:
+  - name:        "Obstacle avoidance input"
+    topic:       "/obstacle_avoidance/cmd_vel"
+    timeout:     0.05
+    priority:    10
+    short_desc:  "The obstacle avoidance node signal"
+  - name:        "Vision input"
+    topic:       "/vision/cmd_vel"
+    timeout:     0.05
+    priority:    9
+    short_desc:  "cmd_vel from vision calculations"
+  - name:        "Odometry input"
+    topic:       "/odom/cmd_vel"
+    timeout:     0.05
+    priority:    8
+    short_desc:  "Cmd_vel from odometry calculations"
+publisher:       "/cmd_vel"

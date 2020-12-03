@@ -1,0 +1,21 @@
+<launch>
+	<arg name="x"/>
+	<arg name="y"/>
+	<arg name="theta"/>
+	<arg name="nodelet_manager_name" value="nodelet_manager"/>
+	<arg name="config_file" value="$(find lab6)/param/nodes_priority.yaml"/>	
+	<node pkg="nodelet" type="nodelet" name="$(arg nodelet_manager_name)" args="manager"/>
+	<include file="/opt/ros/kinetic/share/yocs_cmd_vel_mux/launch/cmd_vel_mux.launch">
+		<arg name="nodelet_manager_name" value="$(arg nodelet_manager_name)"/>
+		<arg name="config_file" value="$(arg config_file)"/>
+	</include>
+	<node name="feedback_obstacle" pkg="lab6" type="obstacle_avoidance">
+		<remap from="/cmd_vel" to="/obstacle_avoidance/cmd_vel" />
+	</node>
+	<node name="feedback_vision" pkg="lab6" type="feedback_vision" args="$(arg x) $(arg y) $(arg theta)">
+		<remap from="/cmd_vel" to="/vision/cmd_vel" />
+	</node>
+	<node name="feedback_odom" pkg="lab6" type="feedback_odometry" args="$(arg x) $(arg y) $(arg theta)">
+		<remap from="/cmd_vel" to="/odom/cmd_vel" />
+	</node>
+</launch>
